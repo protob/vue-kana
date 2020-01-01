@@ -1,16 +1,16 @@
 <template>
   <div id="app">
-    <Romaji2Kana />
+    <VueKana />
   </div>
 </template>
 
 <script>
-import Romaji2Kana from "./components/Romaji2Kana.vue";
+import VueKana from "./components/VueKana.vue";
 
 export default {
   name: "app",
   components: {
-    Romaji2Kana
+   VueKana
   }
 };
 </script>

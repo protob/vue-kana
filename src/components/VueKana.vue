@@ -27,7 +27,7 @@
 
 const kanaHash = require("@/assets/kana.json");
 export default {
-  name: "Romaji2Kana",
+  name: "VueKana",
   methods: {
     findHash() {
       while (this.hashMaxLen > 0 && !this.hashExists) {
