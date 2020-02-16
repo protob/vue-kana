@@ -1,37 +1,79 @@
-# JavaScript Node CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-javascript/ for more details
-#
 version: 2
 jobs:
-  build:
+  checkout_code:
     docker:
-      # specify the version you desire here
-      - image: circleci/node:lts
-
-      # Specify service dependencies here if necessary
-      # CircleCI maintains a library of pre-built images
-      # documented at https://circleci.com/docs/2.0/circleci-images/
-      # - image: circleci/mongo:3.4.4
+      - image: circleci/node:10
 
     working_directory: ~/repo
 
     steps:
       - checkout
+      - save_cache:
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/repo
 
-      # Download and cache dependencies
+  bundle_dependencies:
+    docker:
+      - image: circleci/node:10
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+      # Download and cache dependencies.
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "package.json" }}
-            # fallback to using the latest cache if no exact match is found
+            # Fallback to using the latest cache if no exact match is found.
             - v1-dependencies-
-
-      - run: yarn install
-
+      - run: npm install
       - save_cache:
           paths:
             - node_modules
           key: v1-dependencies-{{ checksum "package.json" }}
+      # Build the application.
+      - run: npm run build
 
-      # run tests!
-      #- run: yarn test
+  deploy:
+    machine: true
+
+    working_directory: ~/repo
+
+    steps:
+      - restore_cache:
+          keys:
+            - v1-assets-{{ .Environment.CIRCLE_SHA1 }}
+      - run: echo ${CIRCLE_BRANCH}
+      - run:
+          name: Deploy build to GitHub Pages
+          command: |
+            git config credential.helper 'cache --timeout=120'
+            git config user.email "protobx@gmail.com"
+            git config user.name "protob"
+            git commit --allow-empty -m "Page release ${CIRCLE_BUILD_NUM} from ${CIRCLE_BRANCH}"
+            # Push quietly to prevent showing the token in log
+            git push -q --force https://${GITHUB_TOKEN}@github.com/protob/vue-kana.git ${CIRCLE_BRANCH}:gh-pages
+            git tag -a "release_${CIRCLE_BRANCH}_${CIRCLE_BUILD_NUM}" -m "Release based on build ${CIRCLE_BUILD_NUM}"
+            git push -q --tags https://${GITHUB_TOKEN}@github.com/protob/vue-kana.git
+
+workflows:
+  version: 2
+  build-and-deploy:
+    jobs:
+      - checkout_code:
+          filters:
+            branches:
+              ignore:
+                - gh-pages
+      - bundle_dependencies:
+          requires:
+            - checkout_code
+
+      - deploy:
+          requires:
+            - bundle_dependencies
+          filters:
+            branches:
+              only:
+                - master
